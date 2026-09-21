@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BUKU KAS</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.1/dist/umd/supabase.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif;}
+        body{background:#f0f4f8;}
+        .halaman{display:none;padding:20px;max-width:900px;margin:0 auto;}
+        .halaman.aktif{display:block !important;}
+        .menu{background:#1e40af;color:white;padding:12px;position:sticky;top:0;z-index:100;}
+        .menu h1{font-size:18px;margin-bottom:8px;}
+        .tombol-menu{display:inline-block;color:#dbeafe;padding:8px 10px;margin:2px;text-decoration:none;font-size:14px;border-radius:6px;cursor:pointer;}
+        .tombol-menu.aktif{background:white;color:#1e40af;font-weight:bold;}
+        .tombol-merah{background:#ef4444;color:white;float:right;}
+        h2{color:#1e293b;margin:15px 0;}
+        h3{color:#334155;margin:15px 0 8px;font-size:15px;}
+        .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:15px 0;}
+        .kartu{background:white;padding:15px;border-radius:8px;text-align:center;box-shadow:0 2px 4px rgba(0,0,0,0.05);}
+        .angka{font-size:18px;font-weight:bold;color:#1e40af;margin-top:5px;}
+        input,select,textarea{width:100%;padding:10px;margin:6px 0;border:1px solid #ddd;border-radius:6px;font-size:15px;}
+        button{background:#22c55e;color:white;border:none;padding:10px 16px;border-radius:6px;font-size:15px;cursor:pointer;margin:6px 6px 6px 0;}
+        button:hover{opacity:0.9;}
+        button.merah{background:#ef4444;}
+        button.oranye{background:#f59e0b;}
+        button.biru{background:#3b82f6;}
+        table{width:100%;border-collapse:collapse;margin-top:10px;background:white;}
+        th,td{padding:10px;text-align:left;border-bottom:1px solid #eee;font-size:14px;}
+        th{background:#f8fafc;font-weight:bold;}
+        .kotak-login{background:linear-gradient(135deg,#1e40af,#3b82f6);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+        .kotak-login-dalam{background:white;padding:30px;border-radius:16px;width:100%;max-width:400px;box-shadow:0 10px 30px rgba(0,0,0,0.2);}
+        .peringatan{background:#fef3c7;border-left:4px solid #f59e0b;padding:10px;margin:10px 0;border-radius:4px;color:#92400e;display:none;}
+        .info-kecil{font-size:13px;color:#64748b;margin:4px 0 10px;}
+        .sembunyi{display:none !important;}
+        .label-mode{font-size:13px;padding:2px 8px;border-radius:10px;}
+        .status{position:fixed;top:0;left:0;right:0;padding:6px;text-align:center;font-size:13px;z-index:200;display:none;}
+        .status.sedang{background:#dbeafe;color:#1e40af;display:block;}
+        .status.berhasil{background:#d1fae5;color:#065f46;display:block;}
+        .status.gagal{background:#fee2e2;color:#991b1b;display:block;}
+    </style>
+</head>
+<body>
+
+<div id="status" class="status"></div>
+
+<!-- HALAMAN LOGIN -->
+<div id="halamanLogin" class="kotak-login">
+    <div class="kotak-login-dalam">
+        <h1 style="text-align:center;color:#1e40af;margin-bottom:20px;">📒 BUKU KAS</h1>
+        
+        <div style="background:#f8fafc;padding:15px;border-radius:8px;margin-bottom:15px;">
+            <h3 style="margin-bottom:10px;">🔑 Masuk sebagai Admin</h3>
+            <input type="text" id="user" placeholder="Nama Pengguna">
+            <input type="password" id="sandi" placeholder="Kata Sandi">
+            <button style="width:100%;background:#1e40af;" onclick="loginAdmin()">Masuk Admin</button>
+            <p id="pesanSalah" style="color:red;font-size:13px;margin-top:8px;display:none;">❌ Nama pengguna atau sandi salah!</p>
+        </div>
+        <div style="text-align:center;margin:15px 0;color:#94a3b8;">— ATAU —</div>
+        <button style="width:100%;background:#f1f5f9;color:#333;" onclick="loginViewer()">👁️ Lihat Saja</button>
+    </div>
+</div>
+
+<!-- APLIKASI UTAMA -->
+<div id="halamanAplikasi" class="sembunyi">
+    <div class="menu">
+        <h1>📒 BUKU KAS <span id="labelMode" class="label-mode" style="background:#22c55e;">Admin</span></h1>
+        <span class="tombol-menu aktif" onclick="bukaHalaman('beranda')">🏠 Home</span>
+        <span class="tombol-menu" onclick="bukaHalaman('produksi')">⛏️ Produksi</span>
+        <span class="tombol-menu" onclick="bukaHalaman('keuangan')">💰 Keuangan</span>
+        <span class="tombol-menu" onclick="bukaHalaman('laporan')">📊 Laporan</span>
+        <span class="tombol-menu tombol-merah" onclick="keluar()">🚪 Keluar</span>
+    </div>
+
+    <div id="halaman-beranda" class="halaman aktif">
+        <h2>👋 Selamat Datang!</h2>
+        <p style="color:#16a34a;font-size:14px;margin-bottom:10px;">✅ Data Tersimpan Online</p>
+        <p>Berikut ringkasan data terbaru:</p>
+        <div class="grid">
+            <div class="kartu"><div>Total Produksi</div><div class="angka" id="rP">0,00 gram</div></div>
+            <div class="kartu"><div>Total Terjual</div><div class="angka" id="rT">0,00 gram</div></div>
+            <div class="kartu"><div>Sisa Stok</div><div class="angka" id="rS">0,00 gram</div></div>
+            <div class="kartu"><div>Pemasukan</div><div class="angka" id="rM">Rp 0,00</div></div>
+            <div class="kartu"><div>Pengeluaran</div><div class="angka" id="rK">Rp 0,00</div></div>
+            <div class="kartu"><div>Saldo Akhir</div><div class="angka" id="rA">Rp 0,00</div></div>
+        </div>
+        <button class="biru" onclick="muatSemua()">🔄 Muat Ulang Data</button>
+    </div>
+
+    <div id="halaman-produksi" class="halaman">
+        <h2>⛏️ Data Produksi Harian</h2>
+        <div id="peringatanP" class="peringatan">⚠️ Mode Lihat Saja — tidak bisa mengubah data</div>
+        <div id="formP">
+            <h3>Tambah Data Produksi</h3>
+            <input type="date" id="tglP">
+            <label>Nama Barang:</label>
+            <select id="nmP">
+                <option value="">— Pilih Barang —</option>
+                <option value="Emas">🥇 Emas</option>
+                <option value="Perak">🥈 Perak</option>
+                <option value="Tembaga">🔩 Tembaga</option>
+                <option value="Lain-lain">📦 Lain-lain</option>
+            </select>
+            <label>Jumlah Produksi (gram):</label>
+            <input type="number" step="0.01" id="jmlP" placeholder="0,00">
+            <label>Jumlah Terjual (gram):</label>
+            <input type="number" step="0.01" id="jualP" placeholder="0,00" value="0.00">
+            <label>Harga Terjual (Rp):</label>
+            <input type="text" id="hargaJualP" placeholder="Rp 0,00" oninput="formatInputUang(this)">
+            <div class="info-kecil">💡 Saat mengetik, titik otomatis muncul setiap 3 angka</div>
+            <label>Keterangan:</label>
+            <textarea id="ketP" placeholder="Catatan tambahan..." rows="2"></textarea>
+            <button onclick="simpanP()">💾 Simpan Data</button>
+        </div>
+        <h3>Daftar Produksi <button class="biru" style="padding:4px 8px;font-size:13px;" onclick="muatProduksi()">🔄</button></h3>
+        <table><thead><tr><th>Tanggal</th><th>Barang</th><th>Produksi</th><th>Terjual</th><th>Harga Terjual</th><th>Keterangan</th><th>Aksi</th></tr></thead>
+        <tbody id="daftarP"><tr><td colspan="7" style="text-align:center;color:#666;">Belum ada data</td></tr></tbody></table>
+    </div>
+
+    <div id="halaman-keuangan" class="halaman">
+        <h2>💰 Catatan Keuangan</h2>
+        <div id="peringatanK" class="peringatan">⚠️ Mode Lihat Saja — tidak bisa mengubah data</div>
+        <div id="formK">
+            <h3>Tambah Transaksi Manual</h3>
+            <input type="date" id="tglK">
+            <select id="jenisK"><option value="masuk">✅ Pemasukan</option><option value="keluar">💸 Pengeluaran</option></select>
+            <input type="text" id="kategoriK" placeholder="Kategori">
+            <label>Jumlah (Rp):</label>
+            <input type="text" id="jumlahK" placeholder="Rp 0,00" oninput="formatInputUang(this)">
+            <div class="info-kecil">💡 Saat mengetik, titik otomatis muncul setiap 3 angka</div>
+            <textarea id="ketK" placeholder="Keterangan..." rows="2"></textarea>
+            <button onclick="simpanK()">💾 Simpan Transaksi</button>
+        </div>
+        <h3>Daftar Transaksi <button class="biru" style="padding:4px 8px;font-size:13px;" onclick="muatKeuangan()">🔄</button></h3>
+        <table><thead><tr><th>Tanggal</th><th>Kategori</th><th>Jenis</th><th>Jumlah</th><th>Keterangan</th><th>Aksi</th></tr></thead>
+        <tbody id="daftarK"><tr><td colspan="6" style="text-align:center;color:#666;">Belum ada data</td></tr></tbody></table>
+    </div>
+
+    <div id="halaman-laporan" class="halaman">
+        <h2>📊 Laporan Data</h2>
+        <button class="oranye" onclick="unduhExcel()">📥 Unduh Excel</button>
+        <button class="biru" onclick="muatSemua()">🔄 Muat Ulang Semua</button>
+        <button class="merah" id="btnHapus" onclick="hapusSemua()" style="display:none;">🗑️ Hapus Semua Data</button>
+        
+        <h3>📋 Data Produksi Lengkap</h3>
+        <table><thead><tr><th>Tanggal</th><th>Barang</th><th>Produksi (gram)</th><th>Terjual (gram)</th><th>Harga Terjual</th><th>Keterangan</th></tr></thead>
+        <tbody id="lapP"><tr><td colspan="6" style="text-align:center;color:#666;">Belum ada data</td></tr></tbody></table>
+        
+        <h3>💰 Data Keuangan Lengkap</h3>
+        <table><thead><tr><th>Tanggal</th><th>Kategori</th><th>Jenis</th><th>Jumlah</th><th>Keterangan</th></tr></thead>
+        <tbody id="lapK"><tr><td colspan="5" style="text-align:center;color:#666;">Belum ada data</td></tr></tbody></table>
+    </div>
+</div>
+
+<script>
+// ==============================================
+// 🔧 === WAJIB DIISI — TEMPEL DATA ANDA DI BAWAH ===
+const SUPABASE_URL = 'https://ytirhmupsjminjfotzlb.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0aXJobXVwc2ptaW5qZm90emxiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5MzIzMzIsImV4cCI6MjEwNTUwODMzMn0.Z55Vydtd0U7ph0SXfL8OW9qIBxGztoN6TO8C_seQVJU'; // ← Tempel kunci "anon public" ANDA di sini, di dalam tanda kutip
+// ==============================================
+
+let supabaseClient = null;
+try {
+    if (SUPABASE_URL && SUPABASE_KEY && SUPABASE_URL.startsWith('https://') && SUPABASE_KEY.startsWith('eyJhbG')) {
+        supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        console.log('✅ Supabase terhubung!');
+    } else {
+        console.warn('⚠️ Supabase belum lengkap — silakan isi SUPABASE_KEY');
+    }
+} catch (e) {
+    console.warn('⚠️ Supabase error:', e.message);
+}
+
+let pengguna = null;
+
+function tampilStatus(pesan, jenis='sedang') {
+    const el = document.getElementById('status');
+    el.className = 'status ' + jenis;
+    el.textContent = pesan;
+    el.style.display = 'block';
+    if (jenis !== 'sedang') setTimeout(() => el.style.display = 'none', 3000);
+}
+
+function formatInputUang(input) {
+    let nilai = input.value.replace(/[^0-9]/g, '');
+    if (nilai === '' || nilai === '0') { input.value = ''; return; }
+    input.value = nilai.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    input.setSelectionRange(input.value.length, input.value.length);
+}
+
+function formatUang(angka) {
+    if (!angka && angka !== 0) angka = 0;
+    var nil = parseFloat(angka) || 0;
+    var bagian = nil.toFixed(2).replace('.', ',').split(',');
+    return bagian[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".") + "," + bagian[1];
+}
+function formatUangRp(angka) { return "Rp " + formatUang(angka); }
+function formatGram(angka) {
+    if (!angka && angka !== 0) angka = 0;
+    var nil = parseFloat(angka) || 0;
+    var bagian = nil.toFixed(2).replace('.', ',').split(',');
+    return bagian[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".") + "," + bagian[1] + " gram";
+}
+function ambilNilaiUang(id) {
+    const el = document.getElementById(id);
+    if (!el) return 0;
+    const nilaiBersih = el.value.replace(/\./g, '');
+    return parseFloat(nilaiBersih) || 0;
+}
+
+function loginAdmin() {
+    const u = document.getElementById('user').value.trim();
+    const s = document.getElementById('sandi').value;
+    if (u === 'admin' && s === '123456') {
+        masuk({tipe: 'admin'});
+    } else {
+        document.getElementById('pesanSalah').style.display = 'block';
+    }
+}
+function loginViewer() { masuk({tipe: 'viewer'}); }
+function masuk(akun) {
+    pengguna = akun;
+    document.getElementById('halamanLogin').classList.add('sembunyi');
+    document.getElementById('halamanAplikasi').classList.remove('sembunyi');
+    document.getElementById('halaman-beranda').classList.add('aktif');
+    aturMode();
+    muatSemua();
+}
+function keluar() { location.reload(); }
+function aturMode() {
+    const lbl = document.getElementById('labelMode');
+    const pp = document.getElementById('peringatanP');
+    const pk = document.getElementById('peringatanK');
+    const fp = document.getElementById('formP');
+    const fk = document.getElementById('formK');
+    const bh = document.getElementById('btnHapus');
+    if (pengguna.tipe === 'admin') {
+        lbl.textContent = '✅ Admin'; lbl.style.background = '#22c55e';
+        pp.style.display = 'none'; pk.style.display = 'none';
+        fp.style.display = 'block'; fk.style.display = 'block';
+        bh.style.display = 'inline-block';
+    } else {
+        lbl.textContent = '👁️ Lihat'; lbl.style.background = '#f59e0b';
+        pp.style.display = 'block'; pk.style.display = 'block';
+        fp.style.display = 'none'; fk.style.display = 'none';
+        bh.style.display = 'none';
+    }
+}
+
+function bukaHalaman(nama) {
+    document.querySelectorAll('.halaman').forEach(h => h.classList.remove('aktif'));
+    document.querySelectorAll('.tombol-menu').forEach(t => t.classList.remove('aktif'));
+    document.getElementById('halaman-' + nama).classList.add('aktif');
+    event.target.classList.add('aktif');
+    if (nama === 'beranda') muatRingkasan();
+    if (nama === 'produksi') muatProduksi();
+    if (nama === 'keuangan') muatKeuangan();
+    if (nama === 'laporan') { muatProduksi(); muatKeuangan(); }
+}
+
+let dataP = [], dataK = [];
+
+async function muatSemua() {
+    if (!supabaseClient) {
+        tampilStatus('⚠️ Isi SUPABASE_KEY untuk memuat data', 'sedang');
+        return;
+    }
+    tampilStatus('🔄 Memuat data...');
+    await muatProduksi();
+    await muatKeuangan();
+    muatRingkasan();
+    tampilStatus('✅ Data dimuat!', 'berhasil');
+}
+
+async function muatProduksi() {
+    if (!supabaseClient) return;
+    try {
+        const { data, error } = await supabaseClient.from('produksi').select('*').order('tanggal', { ascending: false });
+        if (error) throw error;
+        dataP = data || [];
+        tampilProduksi(); tampilLaporanP();
+    } catch (e) { tampilStatus('❌ Gagal ambil data produksi', 'gagal'); }
+}
+
+async function muatKeuangan() {
+    if (!supabaseClient) return;
+    try {
+        const { data, error } = await supabaseClient.from('keuangan').select('*').order('tanggal', { ascending: false });
+        if (error) throw error;
+        dataK = data || [];
+        tampilKeuangan(); tampilLaporanK();
+    } catch (e) { tampilStatus('❌ Gagal ambil data keuangan', 'gagal'); }
+}
+
+function muatRingkasan() {
+    var tp = 0, tt = 0, tm = 0, tk = 0;
+    dataP.forEach(d => { tp += parseFloat(d.jumlah_produksi) || 0; tt += parseFloat(d.jumlah_terjual) || 0; });
+    dataK.forEach(d => { if (d.jenis === 'masuk') tm += parseFloat(d.jumlah) || 0; else tk += parseFloat(d.jumlah) || 0; });
+    setId('rP', formatGram(tp));
+    setId('rT', formatGram(tt));
+    setId('rS', formatGram(tp - tt));
+    setId('rM', formatUangRp(tm));
+    setId('rK', formatUangRp(tk));
+    setId('rA', formatUangRp(tm - tk));
+}
+function setId(id, teks) { const el = document.getElementById(id); if (el) el.textContent = teks; }
+
+async function simpanP() {
+    if (!supabaseClient) { tampilStatus('❌ Isi SUPABASE_KEY dulu', 'gagal'); return; }
+    if (pengguna.tipe !== 'admin') { alert('❌ Hanya Admin!'); return; }
+    var tgl = document.getElementById('tglP').value;
+    var nm = document.getElementById('nmP').value;
+    var jml = parseFloat(document.getElementById('jmlP').value) || 0;
+    var jual = parseFloat(document.getElementById('jualP').value) || 0;
+    var harga = ambilNilaiUang('hargaJualP');
+    var ket = document.getElementById('ketP').value || '';
+    if (!tgl || !nm || (!jml && jml !== 0)) { alert('⚠️ Lengkapi Tanggal, Barang, dan Jumlah Produksi!'); return; }
+    
+    tampilStatus('💾 Menyimpan...');
+    try {
+        const { error: errP } = await supabaseClient.from('produksi').insert([{
+            tanggal: tgl, nama_barang: nm, jumlah_produksi: jml,
+            jumlah_terjual: jual, harga_terjual: harga, keterangan: ket
+        }]);
+        if (errP) throw errP;
+        
+        if (jual > 0 && harga > 0) {
+            const ketJual = nm + ' terjual ' + formatGram(jual) + (ket ? ' | ' + ket : '');
+            const { error: errK } = await supabaseClient.from('keuangan').insert([{
+                tanggal: tgl, jenis: 'masuk', kategori: 'Penjualan ' + nm,
+                jumlah: harga, keterangan: ketJual, dari_produksi: true
+            }]);
+            if (errK) throw errK;
+        }
+        tampilStatus('✅ Tersimpan!', 'berhasil');
+        document.getElementById('tglP').value = '';
+        document.getElementById('nmP').value = '';
+        document.getElementById('jmlP').value = '';
+        document.getElementById('jualP').value = '0.00';
+        document.getElementById('hargaJualP').value = '';
+        document.getElementById('ketP').value = '';
+        await muatSemua();
+    } catch (e) { tampilStatus('❌ Gagal simpan: ' + e.message, 'gagal'); }
+}
+
+async function simpanK() {
+    if (!supabaseClient) { tampilStatus('❌ Isi SUPABASE_KEY dulu', 'gagal'); return; }
+    if (pengguna.tipe !== 'admin') { alert('❌ Hanya Admin!'); return; }
+    var tgl = document.getElementById('tglK').value;
+    var jenis = document.getElementById('jenisK').value;
+    var kategori = document.getElementById('kategoriK').value;
+    var jumlah = ambilNilaiUang('jumlahK');
+    var ket = document.getElementById('ketK').value || '';
+    if (!tgl || !kategori || (!jumlah && jumlah !== 0)) { alert('⚠️ Lengkapi data!'); return; }
+    
+    tampilStatus('💾 Menyimpan...');
+    try {
+        const { error } = await supabaseClient.from('keuangan').insert([{
+            tanggal: tgl, jenis: jenis, kategori: kategori,
+            jumlah: jumlah, keterangan: ket, dari_produksi: false
+        }]);
+        if (error) throw error;
+        tampilStatus('✅ Tersimpan!', 'berhasil');
+        document.getElementById('tglK').value = '';
+        document.getElementById('jenisK').value = 'masuk';
+        document.getElementById('kategoriK').value = '';
+        document.getElementById('jumlahK').value = '';
+        document.getElementById('ketK').value = '';
+        await muatKeuangan();
+        muatRingkasan();
+    } catch (e) { tampilStatus('❌ Gagal simpan: ' + e.message, 'gagal'); }
+}
+
+function tampilProduksi() {
+    var el = document.getElementById('daftarP');
+    if (!el) return;
+    var html = '';
+    if (dataP.length > 0) {
+        dataP.forEach(d => {
+            var hargaTampil = d.harga_terjual > 0 ? formatUangRp(d.harga_terjual) : '-';
+            html += '<tr><td>' + d.tanggal + '</td><td>' + d.nama_barang + '</td><td>' + formatGram(d.jumlah_produksi) + '</td><td>' + formatGram(d.jumlah_terjual) + '</td><td>' + hargaTampil + '</td><td>' + (d.keterangan||'-') + '</td><td>';
+            if (pengguna.tipe === 'admin') html += '<button onclick="hapusP(' + d.id + ')">🗑️</button>';
+            html += '</td></tr>';
+        });
+    } else html = '<tr><td colspan="7" style="text-align:center;color:#666;">Belum ada data</td></tr>';
+    el.innerHTML = html;
+}
+
+function tampilKeuangan() {
+    var el = document.getElementById('daftarK');
+    if (!el) return;
+    var html = '';
+    if (dataK.length > 0) {
+        dataK.forEach(d => {
+            var jenis = d.jenis === 'masuk' ? '✅ Masuk' : '💸 Keluar';
+            html += '<tr><td>' + d.tanggal + '</td><td>' + d.kategori + '</td><td>' + jenis + '</td><td>' + formatUangRp(d.jumlah) + '</td><td>' + (d.keterangan||'-') + '</td><td>';
+            if (pengguna.tipe === 'admin') html += '<button onclick="hapusK(' + d.id + ')">🗑️</button>';
+            html += '</td></tr>';
+        });
+    } else html = '<tr><td colspan="6" style="text-align:center;color:#666;">Belum ada data</td></tr>';
+    el.innerHTML = html;
+}
+
+function tampilLaporanP() {
+    var el = document.getElementById('lapP');
+    if (!el) return;
+    var html = '';
+    if (dataP.length > 0) {
+        dataP.forEach(d => {
+            var hargaTampil = d.harga_terjual > 0 ? formatUangRp(d.harga_terjual) : '-';
+            html += '<tr><td>' + d.tanggal + '</td><td>' + d.nama_barang + '</td><td>' + formatGram(d.jumlah_produksi) + '</td><td>' + formatGram(d.jumlah_terjual) + '</td><td>' + hargaTampil + '</td><td>' + (d.keterangan||'-') + '</td></tr>';
+        });
+    } else html = '<tr><td colspan="6" style="text-align:center;color:#666;">Belum ada data</td></tr>';
+    el.innerHTML = html;
+}
+
+function tampilLaporanK() {
+    var el = document.getElementById('lapK');
+    if (!el) return;
+    var html = '';
+    if (dataK.length > 0) {
+        dataK.forEach(d => {
+            var jenis = d.jenis === 'masuk' ? 'Pemasukan' : 'Pengeluaran';
+            html += '<tr><td>' + d.tanggal + '</td><td>' + d.kategori + '</td><td>' + jenis + '</td><td>' + formatUangRp(d.jumlah) + '</td><td>' + (d.keterangan||'-') + '</td></tr>';
+        });
+    } else html = '<tr><td colspan="5" style="text-align:center;color:#666;">Belum ada data</td></tr>';
+    el.innerHTML = html;
+}
+
+async function hapusP(id) {
+    if (!supabaseClient) { tampilStatus('❌ Supabase belum siap', 'gagal'); return; }
+    if(!confirm('Yakin hapus?')) return;
+    tampilStatus('🗑️ Menghapus...');
+    try {
+        const { error } = await supabaseClient.from('produksi').delete().eq('id', id);
+        if (error) throw error;
+        tampilStatus('✅ Dihapus!', 'berhasil');
+        await muatSemua();
+    } catch (e) { tampilStatus('❌ Gagal hapus: ' + e.message, 'gagal'); }
+}
+
+async function hapusK(id) {
+    if (!supabaseClient) { tampilStatus('❌ Supabase belum siap', 'gagal'); return; }
+    if(!confirm('Yakin hapus?')) return;
+    tampilStatus('🗑️ Menghapus...');
+    try {
+        const { error } = await supabaseClient.from('keuangan').delete().eq('id', id);
+        if (error) throw error;
+        tampilStatus('✅ Dihapus!', 'berhasil');
+        await muatSemua();
+    } catch (e) { tampilStatus('❌ Gagal hapus: ' + e.message, 'gagal'); }
+}
+
+async function hapusSemua() {
+    if (!supabaseClient) { tampilStatus('❌ Supabase belum siap', 'gagal'); return; }
+    if(!confirm('⚠️ YAKIN hapus SEMUA data?')) return;
+    tampilStatus('🗑️ Menghapus semua...');
+    try {
+        await supabaseClient.from('produksi').delete().neq('id', 0);
+        await supabaseClient.from('keuangan').delete().neq('id', 0);
+        tampilStatus('✅ Semua data dihapus!', 'berhasil');
+        await muatSemua();
+    } catch (e) { tampilStatus('❌ Gagal hapus: ' + e.message, 'gagal'); }
+}
+
+function unduhExcel() {
+    if (!window.XLSX) { alert('⚠️ Coba lagi sebentar'); return; }
+    var wb = XLSX.utils.book_new();
+    var dataPExcel = dataP.map(d => ({
+        'Tanggal': d.tanggal,
+        'Nama Barang': d.nama_barang,
+        'Produksi (gram)': formatGram(d.jumlah_produksi),
+        'Terjual (gram)': formatGram(d.jumlah_terjual),
+        'Harga Terjual (Rp)': formatUangRp(d.harga_terjual || 0),
+        'Keterangan': d.keterangan || ''
+    }));
+    var dataKExcel = dataK.map(d => ({
+        'Tanggal': d.tanggal,
+        'Kategori': d.kategori,
+        'Jenis': d.jenis === 'masuk' ? 'Pemasukan' : 'Pengeluaran',
+        'Jumlah (Rp)': formatUangRp(d.jumlah),
+        'Keterangan': d.keterangan || ''
+    }));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(dataPExcel), 'Produksi');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(dataKExcel), 'Keuangan');
+    XLSX.writeFile(wb, 'BukuKas_' + new Date().toISOString().slice(0,10) + '.xlsx');
+}
+</script>
+</body>
+</html>
