@@ -210,25 +210,16 @@ function ambilNilaiUang(id) {
     return parseFloat(nilaiBersih) || 0;
 }
 
-// Daftar akun admin
-const daftarAdmin = [
-    { username: 'admin1', password: '123456' },
-    { username: 'user', password: '654321' }
-];
-
 function loginAdmin() {
     const u = document.getElementById('user').value.trim();
     const s = document.getElementById('sandi').value;
-    
-    // Cek apakah ada di daftar admin
-    const adminValid = daftarAdmin.find(a => a.username === u && a.password === s);
-    
-    if (adminValid) {
+    if (u === 'admin' && s === '123456') {
         masuk({tipe: 'admin'});
     } else {
         document.getElementById('pesanSalah').style.display = 'block';
     }
 }
+
 }
 function loginViewer() { masuk({tipe: 'viewer'}); }
 function masuk(akun) {
